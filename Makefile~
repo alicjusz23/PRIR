@@ -1,0 +1,8 @@
+CC=mpicc #gcc
+CFLAGS=-lmpi
+RUN=mpirun -np 3
+fscount: main3.c
+	${CC} main3.c -g -o wcount ${CFLAGS}
+run: wcount
+	${RUN} ./wcount
+
