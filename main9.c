@@ -279,20 +279,27 @@ int main(int argc, char** argv) {
 	  MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
 	  MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 	  
-	  if (world_rank == master) {
-		if (argc == 1 ){
-			printf("Podaj argumenty\nUruchom program:\n make run arg1=\"stat/addr/time\"  arg2=\"<<nazwa pliku>>\" ");
-			exit(1);
-		}else if (argc != 3 ){
-			printf("Podaj argumenty\nUruchom program:\n make run arg1=\"stat/addr/time\"  arg2=\"<<nazwa pliku>>\" ");
-			exit(1);
-		}
+	if (argc == 1 ){
+		if (world_rank == master)
+			printf("Podaj argumenty\nUruchom program jeszcze raz:\nmake run arg1=\"stat/addr/time\"  arg2=\"<<nazwa pliku>>\" \n");
+		MPI_Finalize();
+		return 0;
+		exit(1);
+	}else if (argc != 3 ){
+		if (world_rank == master)
+			printf("Podaj argumenty!\nUruchom program jeszcze raz:\nmake run arg1=\"stat/addr/time\"  arg2=\"<<nazwa pliku>>\" \n");
+		MPI_Finalize();
+		return 0;
+		exit(1);
+	}
 		char * k = argv[1];
 		char * p = argv[2];
 		char komenda[4];
 		char plik[strlen(p)];
 		memcpy(komenda, k, 4);
 		memcpy(plik, p, strlen(p));
+	  
+	  if (world_rank == master) {
 		
 		int bytes, bytes2=0;
 		char c;
@@ -312,7 +319,7 @@ int main(int argc, char** argv) {
 		  }
 		  if (bytes > buffer_size) {
 			buffer_size *= 2;
-			printf("Powiekszam bufor do %d bajtow.\n", buffer_size);
+			debug("Powiekszam bufor do %d bajtow.\n", buffer_size);
 			words = realloc(words, buffer_size * sizeof(char));
 			indexes = realloc(indexes, buffer_size * sizeof(int));
 		  }  
@@ -321,7 +328,9 @@ int main(int argc, char** argv) {
 		
 		/* policz slowa */
 		char * w_poprz = NULL;
-		int pocz = w2;
+		char *pocz;
+		pocz= w2;
+		
 		w = words;
 		len = strlen(w);
 		while(len) {
@@ -360,7 +369,7 @@ int main(int argc, char** argv) {
 		out_occurs = calloc(nwords, sizeof(int));
 	  }
 	  
-	  if (world_rank == master) printf("Faza mapowania %d slow na %d procesorach\n", nwords, world_size);
+	  if (world_rank == master) debug("Faza mapowania %d slow na %d procesorach\n", nwords, world_size);
 	  map(nwords, w2, indexes,
 		  &out_nwords, out_words, out_indexes, out_occurs);
 
@@ -377,14 +386,15 @@ int main(int argc, char** argv) {
 		}
 	  }
 
-	  if (world_rank == master) printf("Faza redukcji %d kluczy na %d procesorach\n", out_nwords, world_size);
+	  if (world_rank == master) debug("Faza redukcji %d kluczy na %d procesorach\n", out_nwords, world_size);
 
 	  reduce(out_nwords, out_words, out_indexes, out_occurs);
 
 	  if (world_rank == master) {
+			printf("Wybrano opcje: %s\nW pliku jest %d slow, czyli %d kluczy, redukcja na %d procesorach\n", komenda, nwords, out_nwords, world_size);
 		char* w = out_words;
 		for (i=0; i<out_nwords; i++, w += strlen(w) + 1) {
-		  printf("Reduced %s => %d\n", w, out_indexes[i]);
+			printf("\t%s => \t%d wystapien, %lf %%\n", w, out_indexes[i], (float) out_indexes[i]*100/nwords);
 		}
 	  }
 
